@@ -1,0 +1,27 @@
+[package]
+name = "axum-sessions"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-session = "3.0.0"
+futures = "0.3.21"
+tower = "0.4.12"
+http-body = "0.4.5"
+
+[dependencies.axum]
+version = "0.5.7"
+features = ["headers"]
+
+[dependencies.axum-extra]
+version = "0.3.4"
+features = ["cookie-signed"]
+
+[dev-dependencies]
+http = "0.2.8"
+hyper = "0.14.19"
+
+[dev-dependencies.tokio]
+version = "1.19.2"
+default-features = false
+features = ["macros", "rt-multi-thread"]
