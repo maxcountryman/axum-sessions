@@ -6,8 +6,10 @@ axum-sessions
 🥠 Cookie-based sessions for axum.
 </p>
 
+<div align="center">
 [![Crate](https://img.shields.io/crates/v/axum-sessions.svg)](https://crates.io/crates/axum-sessions)
 [![API](https://docs.rs/axum-sessions/badge.svg)](https://docs.rs/axum-sessions)
+</div>
 
 ## 📦 Install
 
