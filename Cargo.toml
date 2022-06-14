@@ -1,7 +1,9 @@
 [package]
 name = "axum-sessions"
 version = "0.1.0"
+description = "🥠 Cookie-based sessions for axum."
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 async-session = "3.0.0"
