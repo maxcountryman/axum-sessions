@@ -7,8 +7,12 @@ axum-sessions
 </p>
 
 <div align="center">
-[![Crate](https://img.shields.io/crates/v/axum-sessions.svg)](https://crates.io/crates/axum-sessions)
-[![API](https://docs.rs/axum-sessions/badge.svg)](https://docs.rs/axum-sessions)
+<a href="https://crates.io/crates/axum-sessions">
+<img src="https://img.shields.io/crates/v/axum-sessions.svg" />
+</a>
+<a href="https://docs.rs/axum-sessions">
+<img src="https://docs.rs/axum-sessions/badge.svg" />
+</a>
 </div>
 
 ## 📦 Install
