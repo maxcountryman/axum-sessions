@@ -21,5 +21,5 @@ Add the crate to your project dependencies:
 
 ```toml
 [dependencies]
-axum-sessions = "0.1.0"
+axum-sessions = "0.1.1"
 ```
