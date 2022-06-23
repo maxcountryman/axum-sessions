@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "🥠 Cookie-based sessions for axum."
 edition = "2021"
 license = "MIT"
+keywords = ["axum", "session", "sessions", "cookie", "cookies"]
+repository = "https://github.com/maxcountryman/axum-sessions"
 
 [dependencies]
 async-session = "3.0.0"
