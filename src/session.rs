@@ -302,8 +302,8 @@ where
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
                         tracing::error!("Failed to reach session storage: {:?}", e);
+                        *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
                     }
                 }
             }
