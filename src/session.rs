@@ -15,7 +15,7 @@ use async_session::{
 use axum::{
     http::{
         header::{HeaderValue, COOKIE, SET_COOKIE},
-        Request,
+        Request, StatusCode,
     },
     response::Response,
 };
@@ -166,6 +166,20 @@ impl<Store: SessionStore> SessionLayer<Store> {
         cookie
     }
 
+    fn build_removal_cookie(&self, secure: bool) -> Cookie<'static> {
+        let mut cookie = Cookie::build(self.cookie_name.clone(), "")
+            .http_only(true)
+            .same_site(self.same_site_policy)
+            .secure(secure)
+            .finish();
+
+        cookie.make_removal();
+
+        self.sign_cookie(&mut cookie);
+
+        cookie
+    }
+
     // the following is reused verbatim from
     // https://github.com/SergioBenitez/cookie-rs/blob/master/src/secure/signed.rs#L33-L43
     /// Signs the cookie's value providing integrity and authenticity.
@@ -266,26 +280,31 @@ where
             let mut response = inner.call(request).await?;
 
             if session.is_destroyed() {
-                session_layer
-                    .store
-                    .destroy_session(session)
-                    .await
-                    .expect("Could not destroy session.");
-            } else if session_layer.save_unchanged || session.data_changed() {
-                let cookie = session_layer
-                    .store
-                    .store_session(session)
-                    .await
-                    .expect("Could not store session.")
-                    .map(|cookie_value| {
-                        session_layer.build_cookie(session_layer.secure, cookie_value)
-                    });
+                if let Err(e) = session_layer.store.destroy_session(session).await {
+                    tracing::error!("Failed to destroy session: {:?}", e);
+                    *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                }
 
-                if let Some(cookie) = cookie {
-                    response.headers_mut().insert(
-                        SET_COOKIE,
-                        HeaderValue::from_str(&cookie.to_string()).unwrap(),
-                    );
+                let removal_cookie = session_layer.build_removal_cookie(session_layer.secure);
+
+                response.headers_mut().insert(
+                    SET_COOKIE,
+                    HeaderValue::from_str(&removal_cookie.to_string()).unwrap(),
+                );
+            } else if session_layer.save_unchanged || session.data_changed() {
+                match session_layer.store.store_session(session).await {
+                    Ok(Some(cookie_value)) => {
+                        let cookie = session_layer.build_cookie(session_layer.secure, cookie_value);
+                        response.headers_mut().insert(
+                            SET_COOKIE,
+                            HeaderValue::from_str(&cookie.to_string()).unwrap(),
+                        );
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                        tracing::error!("Failed to reach session storage: {:?}", e);
+                    }
                 }
             }
 
