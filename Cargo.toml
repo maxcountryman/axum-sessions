@@ -10,8 +10,8 @@ repository = "https://github.com/maxcountryman/axum-sessions"
 [dependencies]
 async-session = "3.0.0"
 futures = "0.3.21"
-tower = "0.4.12"
 http-body = "0.4.5"
+tower = "0.4.12"
 tracing = "0.1"
 
 [dependencies.axum]
