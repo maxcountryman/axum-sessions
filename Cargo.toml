@@ -26,6 +26,10 @@ features = ["cookie-signed"]
 http = "0.2.8"
 hyper = "0.14.19"
 
+[dev-dependencies.rand]
+version = "0.8.5"
+features = ["min_const_gen"]
+
 [dev-dependencies.tokio]
 version = "1.19.2"
 default-features = false

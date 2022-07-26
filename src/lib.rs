@@ -48,6 +48,7 @@
 //! use axum_sessions::SessionLayer;
 //! use http::{Request, Response};
 //! use hyper::Body;
+//! use rand::Rng;
 //! use tower::{Service, ServiceBuilder, ServiceExt};
 //!
 //! async fn handle(request: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -61,12 +62,7 @@
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let store = async_session::MemoryStore::new();
-//! let secret: Vec<u8> = ["_"]
-//!     .iter()
-//!     .cycle()
-//!     .take(64)
-//!     .flat_map(|s| s.as_bytes().to_owned())
-//!     .collect();
+//! let secret = rand::thread_rng().gen::<[u8; 128]>();
 //! let session_layer = SessionLayer::new(store, &secret);
 //!
 //! let mut service = ServiceBuilder::new()
