@@ -3,22 +3,20 @@
 //!
 //! [`SessionLayer`] provides client sessions via [`async_session`]. Sessions
 //! are backed by cryptographically signed cookies. These cookies are generated
-//! when they're not found or otherwise invalid. When a valid, known
-//! cookie is received in a request, the session is hydrated from this cookie.
-//! The middleware leverages [`http::Extensions`](axum::http::Extensions) to
-//! attach an [`async_session::Session`] to the request. Request handlers can
-//! then interact with the session.
+//! when they're not found or are otherwise invalid. When a valid, known cookie
+//! is received in a request, the session is hydrated from this cookie. The
+//! middleware provides sessions via [`SessionHandle`]. Handlers use the
+//! [`ReadableSession`](crate::extractors::ReadableSession) and
+//! [`WritableSession`](crate::extractors::WritableSession) extractors to read
+//! from and write to sessions respectively.
 //!
 //! # Example
 //!
 //! Using the middleware with axum is straightforward:
 //!
 //! ```rust,no_run
-//! use axum::{routing::get, Extension, Router};
-//! use axum_sessions::{
-//!     async_session::{MemoryStore, Session},
-//!     SessionLayer,
-//! };
+//! use axum::{routing::get, Router};
+//! use axum_sessions::{async_session::MemoryStore, extractors::WritableSession, SessionLayer};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -26,8 +24,10 @@
 //!     let secret = b"..."; // MUST be at least 64 bytes!
 //!     let session_layer = SessionLayer::new(store, secret);
 //!
-//!     async fn handler(Extension(session): Extension<Session>) {
-//!         // Use the session in your handler...
+//!     async fn handler(mut session: WritableSession) {
+//!         session
+//!             .insert("foo", 42)
+//!             .expect("Could not store the answer.");
 //!     }
 //!
 //!     let app = Router::new().route("/", get(handler)).layer(session_layer);
@@ -39,23 +39,24 @@
 //! }
 //! ```
 //!
-//! This middleware may also be used as a generic Tower middleware:
+//! This middleware may also be used as a generic Tower middleware by making use
+//! of the [`SessionHandle`] extension:
 //!
 //! ```rust
 //! use std::convert::Infallible;
 //!
 //! use axum::http::header::SET_COOKIE;
-//! use axum_sessions::SessionLayer;
+//! use axum_sessions::{extractors::WritableSession, SessionHandle, SessionLayer};
 //! use http::{Request, Response};
 //! use hyper::Body;
 //! use rand::Rng;
 //! use tower::{Service, ServiceBuilder, ServiceExt};
 //!
 //! async fn handle(request: Request<Body>) -> Result<Response<Body>, Infallible> {
-//!     assert!(request
-//!         .extensions()
-//!         .get::<async_session::Session>()
-//!         .is_some());
+//!     let session_handle = request.extensions().get::<SessionHandle>().unwrap();
+//!     let session = session_handle.read().await;
+//!     // Use the session as you'd like.
+//!
 //!     Ok(Response::new(Body::empty()))
 //! }
 //!
@@ -88,9 +89,10 @@
 //! # Ok(())
 //! # }
 //! ```
+pub mod extractors;
 mod session;
 
 pub use async_session;
 pub use axum_extra::extract::cookie::SameSite;
 
-pub use self::session::{Session, SessionLayer};
+pub use self::session::{Session, SessionHandle, SessionLayer};
