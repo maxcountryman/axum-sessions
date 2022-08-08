@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use axum::{
     async_trait,
     extract::{FromRequest, RequestParts},
-    http, Extension,
+    Extension,
 };
 use tokio::sync::{OwnedRwLockReadGuard, OwnedRwLockWriteGuard};
 
