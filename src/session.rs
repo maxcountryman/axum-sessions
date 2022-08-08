@@ -328,9 +328,7 @@ where
                         );
                     }
 
-                    Ok(None) => {
-                        tracing::warn!("The cookie value is missing; no cookie will be set!");
-                    }
+                    Ok(None) => {}
 
                     Err(e) => {
                         tracing::error!("Failed to reach session storage: {:?}", e);
