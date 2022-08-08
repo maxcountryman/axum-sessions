@@ -1,5 +1,5 @@
 use async_sqlx_session::SqliteSessionStore;
-use axum::{routing::get, Extension, Router};
+use axum::{routing::get, Router};
 use axum_sessions::{
     extractors::{ReadableSession, WritableSession},
     SessionLayer,
