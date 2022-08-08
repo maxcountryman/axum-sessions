@@ -160,11 +160,11 @@ impl<Store: SessionStore> SessionLayer<Store> {
         ))
     }
 
-    fn build_cookie(&self, secure: bool, cookie_value: String) -> Cookie<'static> {
+    fn build_cookie(&self, cookie_value: String) -> Cookie<'static> {
         let mut cookie = Cookie::build(self.cookie_name.clone(), cookie_value)
             .http_only(true)
             .same_site(self.same_site_policy)
-            .secure(secure)
+            .secure(self.secure)
             .path(self.cookie_path.clone())
             .finish();
 
@@ -181,12 +181,17 @@ impl<Store: SessionStore> SessionLayer<Store> {
         cookie
     }
 
-    fn build_removal_cookie(&self, secure: bool) -> Cookie<'static> {
-        let mut cookie = Cookie::build(self.cookie_name.clone(), "")
+    fn build_removal_cookie(&self) -> Cookie<'static> {
+        let cookie = Cookie::build(self.cookie_name.clone(), "")
             .http_only(true)
-            .same_site(self.same_site_policy)
-            .secure(secure)
-            .finish();
+            .path(self.cookie_path.clone());
+
+        let mut cookie = if let Some(cookie_domain) = self.cookie_domain.clone() {
+            cookie.domain(cookie_domain)
+        } else {
+            cookie
+        }
+        .finish();
 
         cookie.make_removal();
 
@@ -312,7 +317,7 @@ where
                     *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
                 }
 
-                let removal_cookie = session_layer.build_removal_cookie(session_layer.secure);
+                let removal_cookie = session_layer.build_removal_cookie();
 
                 response.headers_mut().insert(
                     SET_COOKIE,
@@ -321,7 +326,7 @@ where
             } else if session_layer.save_unchanged || session_data_changed {
                 match session_layer.store.store_session(session).await {
                     Ok(Some(cookie_value)) => {
-                        let cookie = session_layer.build_cookie(session_layer.secure, cookie_value);
+                        let cookie = session_layer.build_cookie(cookie_value);
                         response.headers_mut().insert(
                             SET_COOKIE,
                             HeaderValue::from_str(&cookie.to_string()).unwrap(),
