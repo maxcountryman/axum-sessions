@@ -2,6 +2,7 @@
 // `tide::sessions::middleware::SessionMiddleware`. See: https://github.com/http-rs/tide/blob/20fe435a9544c10f64245e883847fc3cd1d50538/src/sessions/middleware.rs
 
 use std::{
+    sync::Arc,
     task::{Context, Poll},
     time::Duration,
 };
@@ -21,9 +22,21 @@ use axum::{
 };
 use axum_extra::extract::cookie::{Cookie, Key, SameSite};
 use futures::future::BoxFuture;
+use tokio::sync::RwLock;
 use tower::{Layer, Service};
 
 const BASE64_DIGEST_LEN: usize = 44;
+
+/// A type alias which provides a handle to the underlying session.
+///
+/// This is provided via [`http::Extensions`](axum::http::Extensions). Most
+/// applications will use the
+/// [`ReadableSession`](crate::extractors::ReadableSession) and
+/// [`WritableSession`](crate::extractors::WritableSession) extractors rather
+/// than using the handle directly. A notable exception is when using this
+/// library as a generic Tower middleware: such use cases will consume the
+/// handle directly.
+pub type SessionHandle = Arc<RwLock<async_session::Session>>;
 
 #[derive(Clone)]
 pub struct SessionLayer<Store> {
@@ -39,11 +52,11 @@ pub struct SessionLayer<Store> {
 }
 
 impl<Store: SessionStore> SessionLayer<Store> {
-    /// Creates a layer which will attach an [`async_session::Session`] to
-    /// requests via an extension. This session is derived from a
-    /// cryptographically signed cookie. When the client sends a valid,
-    /// known cookie then the session is hydrated from this. Otherwise a new
-    /// cookie is created and returned in the response.
+    /// Creates a layer which will attach a [`SessionHandle`] to requests via an
+    /// extension. This session is derived from a cryptographically signed
+    /// cookie. When the client sends a valid, known cookie then the session is
+    /// hydrated from this. Otherwise a new cookie is created and returned in
+    /// the response.
     ///
     /// # Panics
     ///
@@ -134,15 +147,17 @@ impl<Store: SessionStore> SessionLayer<Store> {
         self
     }
 
-    async fn load_or_create(&self, cookie_value: Option<String>) -> async_session::Session {
+    async fn load_or_create(&self, cookie_value: Option<String>) -> SessionHandle {
         let session = match cookie_value {
             Some(cookie_value) => self.store.load_session(cookie_value).await.ok().flatten(),
             None => None,
         };
 
-        session
-            .and_then(|session| session.validate())
-            .unwrap_or_default()
+        Arc::new(RwLock::new(
+            session
+                .and_then(async_session::Session::validate)
+                .unwrap_or_default(),
+        ))
     }
 
     fn build_cookie(&self, secure: bool, cookie_value: String) -> Cookie<'static> {
@@ -270,16 +285,28 @@ where
 
         let mut inner = self.inner.clone();
         Box::pin(async move {
-            let mut session = session_layer.load_or_create(cookie_value).await;
+            let session_handle = session_layer.load_or_create(cookie_value).await;
 
+            let mut session = session_handle.write().await;
             if let Some(ttl) = session_layer.session_ttl {
-                session.expire_in(ttl);
+                (*session).expire_in(ttl);
             }
+            drop(session);
 
-            request.extensions_mut().insert(session.clone());
+            request.extensions_mut().insert(session_handle.clone());
             let mut response = inner.call(request).await?;
 
-            if session.is_destroyed() {
+            let session = session_handle.read().await;
+            let (session_is_destroyed, session_data_changed) =
+                (session.is_destroyed(), session.data_changed());
+            drop(session);
+
+            // Pull out the session so we can pass it to the store without `Clone` blowing
+            // away the `cookie_value`.
+            let session = RwLock::into_inner(
+                Arc::try_unwrap(session_handle).expect("Session handle still has owners."),
+            );
+            if session_is_destroyed {
                 if let Err(e) = session_layer.store.destroy_session(session).await {
                     tracing::error!("Failed to destroy session: {:?}", e);
                     *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
@@ -291,7 +318,7 @@ where
                     SET_COOKIE,
                     HeaderValue::from_str(&removal_cookie.to_string()).unwrap(),
                 );
-            } else if session_layer.save_unchanged || session.data_changed() {
+            } else if session_layer.save_unchanged || session_data_changed {
                 match session_layer.store.store_session(session).await {
                     Ok(Some(cookie_value)) => {
                         let cookie = session_layer.build_cookie(session_layer.secure, cookie_value);
@@ -300,7 +327,9 @@ where
                             HeaderValue::from_str(&cookie.to_string()).unwrap(),
                         );
                     }
+
                     Ok(None) => {}
+
                     Err(e) => {
                         tracing::error!("Failed to reach session storage: {:?}", e);
                         *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
