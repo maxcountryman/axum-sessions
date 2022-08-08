@@ -1,0 +1,27 @@
+[package]
+name = "example-async-sqlx-session"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = "0.5.13"
+axum-sessions = { path = "../../" }
+
+[dependencies.async-sqlx-session]
+version = "0.4.0"
+default-features = false
+features = ["sqlite"]
+
+[dependencies.rand]
+version = "0.8.5"
+features = ["min_const_gen"]
+
+[dependencies.sqlx]
+version = "0.5.13"
+default-features = false
+features = ["runtime-tokio-rustls", "sqlite"]
+
+[dependencies.tokio]
+version = "1.0"
+features = ["full"]
