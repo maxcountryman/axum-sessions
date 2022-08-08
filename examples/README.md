@@ -1,7 +1,6 @@
 # Examples
 
-This folder contains examples showing how to use `axum-sessions`. Each example is
-setup as its own crate so its dependencies are clear.
+This directory contains examples showing how to use `axum-sessions`. Each example is setup as its own crate so its dependencies are clear.
 
 ## Running examples
 
