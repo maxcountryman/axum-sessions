@@ -11,6 +11,7 @@ use crate::SessionHandle;
 
 /// An extractor which provides a readable session. Sessions may have many
 /// readers.
+#[derive(Debug)]
 pub struct ReadableSession {
     session: OwnedRwLockReadGuard<async_session::Session>,
 }
@@ -42,6 +43,7 @@ where
 
 /// An extractor which provides a writable session. Sessions may have only one
 /// writer.
+#[derive(Debug)]
 pub struct WritableSession {
     session: OwnedRwLockWriteGuard<async_session::Session>,
 }
