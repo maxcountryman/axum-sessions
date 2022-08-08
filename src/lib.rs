@@ -46,7 +46,7 @@
 //! use std::convert::Infallible;
 //!
 //! use axum::http::header::SET_COOKIE;
-//! use axum_sessions::{extractors::WritableSession, SessionHandle, SessionLayer};
+//! use axum_sessions::{SessionHandle, SessionLayer};
 //! use http::{Request, Response};
 //! use hyper::Body;
 //! use rand::Rng;
