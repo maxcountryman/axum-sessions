@@ -28,7 +28,7 @@ impl<B> FromRequest<B> for ReadableSession
 where
     B: Send,
 {
-    type Rejection = http::StatusCode;
+    type Rejection = std::convert::Infallible;
 
     async fn from_request(request: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let Extension(session_handle): Extension<SessionHandle> = Extension::from_request(request)
@@ -65,7 +65,7 @@ impl<B> FromRequest<B> for WritableSession
 where
     B: Send,
 {
-    type Rejection = http::StatusCode;
+    type Rejection = std::convert::Infallible;
 
     async fn from_request(request: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let Extension(session_handle): Extension<SessionHandle> = Extension::from_request(request)
