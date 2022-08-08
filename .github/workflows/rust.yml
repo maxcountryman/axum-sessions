@@ -27,7 +27,7 @@ jobs:
           override: true
           profile: minimal
           components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.pwd }}
           workspaces: ${{ matrix.pwd }}
@@ -50,7 +50,7 @@ jobs:
           toolchain: stable
           override: true
           profile: minimal
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
       - name: cargo doc
         env:
           RUSTDOCFLAGS: "-D rustdoc::broken-intra-doc-links"
@@ -68,7 +68,7 @@ jobs:
           toolchain: stable
           override: true
           profile: minimal
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -87,7 +87,7 @@ jobs:
           toolchain: stable
           override: true
           profile: minimal
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
       - name: Run doc tests
         uses: actions-rs/cargo@v1
         with:
