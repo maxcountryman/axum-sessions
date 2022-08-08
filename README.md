@@ -3,7 +3,7 @@ axum-sessions
 </h1>
 
 <p align="center">
-🥠 Cookie-based sessions for `axum` via `async_session`.
+🥠 Cookie-based sessions for axum via async_session.
 </p>
 
 <div align="center">
@@ -95,6 +95,6 @@ You can find this [example][signin-example] as well as other example projects in
 
 See the [crate documentation][docs] for more usage information.
 
-[readme-example]: https://github.com/maxcountryman/axum-sessions/tree/main/examples/signin
+[signin-example]: https://github.com/maxcountryman/axum-sessions/tree/main/examples/signin
 [examples]: https://github.com/maxcountryman/axum-sessions/tree/main/examples
 [docs]: https://docs.rs/axum-sessions
