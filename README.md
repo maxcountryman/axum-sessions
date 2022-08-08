@@ -13,16 +13,19 @@ axum-sessions
 <a href="https://docs.rs/axum-sessions">
 <img src="https://docs.rs/axum-sessions/badge.svg" />
 </a>
+<a href="https://github.com/maxcountryman/axum-sessions/actions/workflows/rust.yml">
+<img src="https://github.com/maxcountryman/axum-sessions/actions/workflows/rust.yml/badge.svg" />
+</a>
 </div>
 
 ## 🎨 Overview
 
 `axum-sessions` is a middleware providing cookie-based sessions for `axum` applications.
 
-    - Cryptographically-signed cookies, ensuring authenticity
-    - Wraps `async_session`, enabling flexible cookie storage (e.g. `async-sqlx-session`)
-    - Convenient extractor-based API (i.e. `ReadableSession` and `WritableSession`)
-    - Can be used as a generic Tower middleware
+- Cryptographically-signed cookies, ensuring authenticity
+- Wraps `async_session`, enabling flexible cookie storage (e.g. `async-sqlx-session`)
+- Convenient extractor-based API (i.e. `ReadableSession` and `WritableSession`)
+- Can be used as a generic Tower middleware
 
 ## 📦 Install
 
