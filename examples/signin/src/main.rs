@@ -23,10 +23,7 @@ async fn main() {
     }
 
     async fn protected_handler(session: ReadableSession) -> &'static str {
-        if session
-            .get::<bool>("signed_in")
-            .unwrap_or(false)
-        {
+        if session.get::<bool>("signed_in").unwrap_or(false) {
             "Shh, it's secret!"
         } else {
             "Nothing to see here."
