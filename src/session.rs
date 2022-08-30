@@ -288,7 +288,8 @@ where
             None
         };
 
-        let mut inner = self.inner.clone();
+        let inner = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, inner);
         Box::pin(async move {
             let session_handle = session_layer.load_or_create(cookie_value).await;
 
