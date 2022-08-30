@@ -237,10 +237,10 @@ impl<Store: SessionStore> SessionLayer<Store> {
     }
 }
 
-impl<S, Store: SessionStore> Layer<S> for SessionLayer<Store> {
-    type Service = Session<S, Store>;
+impl<Inner, Store: SessionStore> Layer<Inner> for SessionLayer<Store> {
+    type Service = Session<Inner, Store>;
 
-    fn layer(&self, inner: S) -> Self::Service {
+    fn layer(&self, inner: Inner) -> Self::Service {
         Session {
             inner,
             layer: self.clone(),
@@ -249,20 +249,21 @@ impl<S, Store: SessionStore> Layer<S> for SessionLayer<Store> {
 }
 
 #[derive(Clone)]
-pub struct Session<S, Store: SessionStore> {
-    inner: S,
+pub struct Session<Inner, Store: SessionStore> {
+    inner: Inner,
     layer: SessionLayer<Store>,
 }
 
-impl<S, ReqBody, ResBody, Store: SessionStore> Service<Request<ReqBody>> for Session<S, Store>
+impl<Inner, ReqBody, ResBody, Store: SessionStore> Service<Request<ReqBody>>
+    for Session<Inner, Store>
 where
-    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    Inner: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     ResBody: Send + 'static,
     ReqBody: Send + 'static,
-    S::Future: Send + 'static,
+    Inner::Future: Send + 'static,
 {
-    type Response = S::Response;
-    type Error = S::Error;
+    type Response = Inner::Response;
+    type Error = Inner::Error;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
