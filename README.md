@@ -3,7 +3,7 @@ axum-sessions
 </h1>
 
 <p align="center">
-🥠 Cookie-based sessions for axum via async_session.
+🥠 Cookie-based sessions for Axum via async-session.
 </p>
 
 <div align="center">
@@ -22,7 +22,7 @@ axum-sessions
 
 `axum-sessions` is a middleware providing cookie-based sessions for `axum` applications.
 
-- Cryptographically-signed cookies, ensuring authenticity
+- Cryptographically-signed cookies, ensuring integrity and authenticity
 - Wraps `async_session`, enabling flexible cookie storage (e.g. `async-sqlx-session`)
 - Convenient extractor-based API (i.e. `ReadableSession` and `WritableSession`)
 - Can be used as a generic Tower middleware

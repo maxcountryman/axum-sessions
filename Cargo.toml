@@ -1,11 +1,11 @@
 [package]
 name = "axum-sessions"
 version = "0.3.1"
-description = "🥠 Cookie-based sessions for axum via async_session."
+description = "🥠 Cookie-based sessions for Axum via async-session."
 edition = "2021"
 homepage = "https://github.com/maxcountryman/axum-sessions"
 license = "MIT"
-keywords = ["axum", "session", "sessions", "cookie", "async_session"]
+keywords = ["axum", "session", "sessions", "cookie", "async-session"]
 categories = ["asynchronous", "network-programming", "web-programming"]
 repository = "https://github.com/maxcountryman/axum-sessions"
 
