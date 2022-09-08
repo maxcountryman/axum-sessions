@@ -38,6 +38,7 @@ const BASE64_DIGEST_LEN: usize = 44;
 /// handle directly.
 pub type SessionHandle = Arc<RwLock<async_session::Session>>;
 
+/// Layer that provides cookie-based sessions.
 #[derive(Clone)]
 pub struct SessionLayer<Store> {
     store: Store,
@@ -248,6 +249,7 @@ impl<Inner, Store: SessionStore> Layer<Inner> for SessionLayer<Store> {
     }
 }
 
+/// Session service container.
 #[derive(Clone)]
 pub struct Session<Inner, Store: SessionStore> {
     inner: Inner,

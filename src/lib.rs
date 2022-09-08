@@ -89,6 +89,9 @@
 //! # Ok(())
 //! # }
 //! ```
+
+#![deny(missing_docs)]
+
 pub mod extractors;
 mod session;
 
