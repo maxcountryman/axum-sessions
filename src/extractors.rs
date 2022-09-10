@@ -4,8 +4,9 @@ use std::ops::{Deref, DerefMut};
 
 use axum::{
     async_trait,
-    extract::{FromRequest, RequestParts},
+    extract::FromRequest,
     Extension,
+    http::Request
 };
 use tokio::sync::{OwnedRwLockReadGuard, OwnedRwLockWriteGuard};
 
@@ -27,14 +28,15 @@ impl Deref for ReadableSession {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for ReadableSession
+impl<S, B> FromRequest<S, B> for ReadableSession
 where
-    B: Send,
+    B: Send + 'static,
+    S: Send + Sync,
 {
     type Rejection = std::convert::Infallible;
 
-    async fn from_request(request: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(session_handle): Extension<SessionHandle> = Extension::from_request(request)
+    async fn from_request(request: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(session_handle): Extension<SessionHandle> = Extension::from_request(request, state)
             .await
             .expect("Session extension missing. Is the session layer installed?");
         let session = session_handle.read_owned().await;
@@ -65,14 +67,15 @@ impl DerefMut for WritableSession {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for WritableSession
+impl<S, B> FromRequest<S, B> for WritableSession
 where
-    B: Send,
+    B: Send + 'static,
+    S: Send + Sync,
 {
     type Rejection = std::convert::Infallible;
 
-    async fn from_request(request: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(session_handle): Extension<SessionHandle> = Extension::from_request(request)
+    async fn from_request(request: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(session_handle): Extension<SessionHandle> = Extension::from_request(request, state)
             .await
             .expect("Session extension missing. Is the session layer installed?");
         let session = session_handle.write_owned().await;
