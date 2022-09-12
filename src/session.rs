@@ -451,7 +451,7 @@ mod tests {
     async fn invalid_session_sets_cookie() {
         let secret = rand::thread_rng().gen::<[u8; 64]>();
         let store = MemoryStore::new();
-        let session_layer = SessionLayer::new(store, &secret);
+        let session_layer = SessionLayer::new(store, &secret).with_save_unchanged(false);
         let mut service = ServiceBuilder::new().layer(session_layer).service_fn(echo);
 
         let request = Request::get("/").body(Body::empty()).unwrap();
