@@ -328,8 +328,9 @@ where
                     HeaderValue::from_str(&removal_cookie.to_string()).unwrap(),
                 );
 
-            // If we've asked to save on unchanged, the session data has changed, or the cookie
-            // value is missing (such as on the first request) then we want to ensure we set
+            // If we've asked to save on unchanged, the session data has
+            // changed, or the cookie value is missing (such as on
+            // the first request) then we want to ensure we set
             // the cookie.
             } else if session_layer.save_unchanged || session_data_changed || cookie_value.is_none()
             {
@@ -368,7 +369,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{async_session::MemoryStore, SessionHandle, SessionLayer};
     use axum::http::{Request, Response};
     use http::{
         header::{COOKIE, SET_COOKIE},
@@ -377,6 +377,8 @@ mod tests {
     use hyper::Body;
     use rand::Rng;
     use tower::{BoxError, Service, ServiceBuilder, ServiceExt};
+
+    use crate::{async_session::MemoryStore, SessionHandle, SessionLayer};
 
     #[tokio::test]
     async fn sets_session_cookie() {
