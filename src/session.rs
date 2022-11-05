@@ -455,7 +455,7 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
 
         let json_bs = &hyper::body::to_bytes(res.into_body()).await.unwrap()[..];
-        let counter: Conter = serde_json::from_slice(json_bs).unwrap();
+        let counter: Counter = serde_json::from_slice(json_bs).unwrap();
         assert_eq!(counter, Counter { counter: 1 });
     }
 
