@@ -32,6 +32,7 @@ features = ["sync"]
 [dev-dependencies]
 http = "0.2.8"
 hyper = "0.14.19"
+serde = "1.0.147"
 
 [dev-dependencies.rand]
 version = "0.8.5"

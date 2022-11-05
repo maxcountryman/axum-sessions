@@ -335,7 +335,6 @@ where
             } else if session_layer.save_unchanged || session_data_changed || cookie_value.is_none()
             {
                 match session_layer.store.store_session(session).await {
-                    // `store_session` will return the cookie value when created...
                     Ok(Some(cookie_value)) => {
                         let cookie = session_layer.build_cookie(cookie_value);
                         response.headers_mut().insert(
@@ -344,16 +343,7 @@ where
                         );
                     }
 
-                    // ...otherwise `store_session` returns `None`.
-                    Ok(None) => {
-                        if let Some(cookie_value) = cookie_value {
-                            let cookie = session_layer.build_cookie(cookie_value);
-                            response.headers_mut().insert(
-                                SET_COOKIE,
-                                HeaderValue::from_str(&cookie.to_string()).unwrap(),
-                            );
-                        }
-                    }
+                    Ok(None) => {}
 
                     Err(e) => {
                         tracing::error!("Failed to reach session storage: {:?}", e);
@@ -369,6 +359,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    use async_session::{
+        serde::{Deserialize, Serialize},
+        serde_json,
+    };
     use axum::http::{Request, Response};
     use http::{
         header::{COOKIE, SET_COOKIE},
@@ -379,6 +373,11 @@ mod tests {
     use tower::{BoxError, Service, ServiceBuilder, ServiceExt};
 
     use crate::{async_session::MemoryStore, SessionHandle, SessionLayer};
+
+    #[derive(Deserialize, Serialize, PartialEq, Debug)]
+    struct Counter {
+        counter: i32,
+    }
 
     #[tokio::test]
     async fn sets_session_cookie() {
@@ -433,20 +432,31 @@ mod tests {
         let secret = rand::thread_rng().gen::<[u8; 64]>();
         let store = MemoryStore::new();
         let session_layer = SessionLayer::new(store, &secret);
-        let mut service = ServiceBuilder::new().layer(session_layer).service_fn(echo);
+        let mut service = ServiceBuilder::new()
+            .layer(session_layer)
+            .service_fn(increment);
 
         let request = Request::get("/").body(Body::empty()).unwrap();
 
         let res = service.ready().await.unwrap().call(request).await.unwrap();
+        let session_cookie = res.headers().get(SET_COOKIE).unwrap().clone();
+
         assert_eq!(res.status(), StatusCode::OK);
 
-        let session_cookie = res.headers().get(SET_COOKIE);
+        let json_bs = &hyper::body::to_bytes(res.into_body()).await.unwrap()[..];
+        let counter: Counter = serde_json::from_slice(json_bs).unwrap();
+        assert_eq!(counter, Counter { counter: 0 });
+
         let mut request = Request::get("/").body(Body::empty()).unwrap();
         request
             .headers_mut()
-            .insert(COOKIE, session_cookie.unwrap().to_owned());
+            .insert(COOKIE, session_cookie.to_owned());
         let res = service.ready().await.unwrap().call(request).await.unwrap();
-        assert_eq!(res.headers().get(SET_COOKIE), session_cookie);
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let json_bs = &hyper::body::to_bytes(res.into_body()).await.unwrap()[..];
+        let counter: Conter = serde_json::from_slice(json_bs).unwrap();
+        assert_eq!(counter, Counter { counter: 1 });
     }
 
     #[tokio::test]
@@ -528,6 +538,25 @@ mod tests {
             let mut session = session_handle.write().await;
             session.destroy();
         }
+
+        Ok(Response::new(req.into_body()))
+    }
+
+    async fn increment(mut req: Request<Body>) -> Result<Response<Body>, BoxError> {
+        let mut counter = 0;
+
+        {
+            let session_handle = req.extensions().get::<SessionHandle>().unwrap();
+            let mut session = session_handle.write().await;
+            counter = session
+                .get("counter")
+                .map(|count: i32| count + 1)
+                .unwrap_or(counter);
+            session.insert("counter", counter).unwrap();
+        }
+
+        let body = serde_json::to_string(&Counter { counter }).unwrap();
+        *req.body_mut() = Body::from(body);
 
         Ok(Response::new(req.into_body()))
     }
