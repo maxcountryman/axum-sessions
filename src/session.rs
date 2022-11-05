@@ -401,33 +401,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn unsaved_changed_false_does_not_set_cookie() {
-        let secret = rand::thread_rng().gen::<[u8; 64]>();
-        let store = MemoryStore::new();
-        let session_layer = SessionLayer::new(store, &secret).with_save_unchanged(false);
-        let mut service = ServiceBuilder::new().layer(session_layer).service_fn(echo);
-
-        let request = Request::get("/").body(Body::empty()).unwrap();
-
-        let res = service.ready().await.unwrap().call(request).await.unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
-
-        let session_cookie = res
-            .headers()
-            .get(SET_COOKIE)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-        let mut request = Request::get("/").body(Body::empty()).unwrap();
-        request
-            .headers_mut()
-            .insert(COOKIE, session_cookie.parse().unwrap());
-        let res = service.ready().await.unwrap().call(request).await.unwrap();
-        assert!(res.headers().get(SET_COOKIE).is_none());
-    }
-
-    #[tokio::test]
     async fn uses_valid_session() {
         let secret = rand::thread_rng().gen::<[u8; 64]>();
         let store = MemoryStore::new();
