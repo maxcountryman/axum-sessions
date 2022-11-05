@@ -210,7 +210,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
         mac.update(cookie.value().as_bytes());
 
         // Cookie's new value is [MAC | original-value].
-        let mut new_value = base64::encode(&mac.finalize().into_bytes());
+        let mut new_value = base64::encode(mac.finalize().into_bytes());
         new_value.push_str(cookie.value());
         cookie.set_value(new_value);
     }
@@ -294,7 +294,7 @@ where
         let inner = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, inner);
         Box::pin(async move {
-            let session_handle = session_layer.load_or_create(cookie_value).await;
+            let session_handle = session_layer.load_or_create(cookie_value.clone()).await;
 
             let mut session = session_handle.write().await;
             if let Some(ttl) = session_layer.session_ttl {
@@ -327,7 +327,13 @@ where
                     SET_COOKIE,
                     HeaderValue::from_str(&removal_cookie.to_string()).unwrap(),
                 );
-            } else if session_layer.save_unchanged || session_data_changed {
+
+            // If we've asked to save on unchanged, the session data has
+            // changed, or the cookie value is missing (such as on
+            // the first request) then we want to ensure we set
+            // the cookie.
+            } else if session_layer.save_unchanged || session_data_changed || cookie_value.is_none()
+            {
                 match session_layer.store.store_session(session).await {
                     Ok(Some(cookie_value)) => {
                         let cookie = session_layer.build_cookie(cookie_value);
@@ -348,5 +354,183 @@ where
 
             Ok(response)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use async_session::{
+        serde::{Deserialize, Serialize},
+        serde_json,
+    };
+    use axum::http::{Request, Response};
+    use http::{
+        header::{COOKIE, SET_COOKIE},
+        StatusCode,
+    };
+    use hyper::Body;
+    use rand::Rng;
+    use tower::{BoxError, Service, ServiceBuilder, ServiceExt};
+
+    use crate::{async_session::MemoryStore, SessionHandle, SessionLayer};
+
+    #[derive(Deserialize, Serialize, PartialEq, Debug)]
+    struct Counter {
+        counter: i32,
+    }
+
+    #[tokio::test]
+    async fn sets_session_cookie() {
+        let secret = rand::thread_rng().gen::<[u8; 64]>();
+        let store = MemoryStore::new();
+        let session_layer = SessionLayer::new(store, &secret);
+        let mut service = ServiceBuilder::new().layer(session_layer).service_fn(echo);
+
+        let request = Request::get("/").body(Body::empty()).unwrap();
+
+        let res = service.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        assert!(res
+            .headers()
+            .get(SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("axum.sid="))
+    }
+
+    #[tokio::test]
+    async fn uses_valid_session() {
+        let secret = rand::thread_rng().gen::<[u8; 64]>();
+        let store = MemoryStore::new();
+        let session_layer = SessionLayer::new(store, &secret);
+        let mut service = ServiceBuilder::new()
+            .layer(session_layer)
+            .service_fn(increment);
+
+        let request = Request::get("/").body(Body::empty()).unwrap();
+
+        let res = service.ready().await.unwrap().call(request).await.unwrap();
+        let session_cookie = res.headers().get(SET_COOKIE).unwrap().clone();
+
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let json_bs = &hyper::body::to_bytes(res.into_body()).await.unwrap()[..];
+        let counter: Counter = serde_json::from_slice(json_bs).unwrap();
+        assert_eq!(counter, Counter { counter: 0 });
+
+        let mut request = Request::get("/").body(Body::empty()).unwrap();
+        request
+            .headers_mut()
+            .insert(COOKIE, session_cookie.to_owned());
+        let res = service.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let json_bs = &hyper::body::to_bytes(res.into_body()).await.unwrap()[..];
+        let counter: Counter = serde_json::from_slice(json_bs).unwrap();
+        assert_eq!(counter, Counter { counter: 1 });
+    }
+
+    #[tokio::test]
+    async fn invalid_session_sets_cookie() {
+        let secret = rand::thread_rng().gen::<[u8; 64]>();
+        let store = MemoryStore::new();
+        let session_layer = SessionLayer::new(store, &secret).with_save_unchanged(false);
+        let mut service = ServiceBuilder::new().layer(session_layer).service_fn(echo);
+
+        let request = Request::get("/").body(Body::empty()).unwrap();
+
+        let res = service.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        res.headers()
+            .get(SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let mut request = Request::get("/").body(Body::empty()).unwrap();
+        request.headers_mut().insert(COOKIE, "".parse().unwrap());
+        let res = service.ready().await.unwrap().call(request).await.unwrap();
+        assert!(res.headers().get(SET_COOKIE).is_some());
+    }
+
+    #[tokio::test]
+    async fn destroyed_sessions_sets_removal_cookie() {
+        let secret = rand::thread_rng().gen::<[u8; 64]>();
+        let store = MemoryStore::new();
+        let session_layer = SessionLayer::new(store, &secret);
+        let mut service = ServiceBuilder::new()
+            .layer(session_layer)
+            .service_fn(destroy);
+
+        let request = Request::get("/").body(Body::empty()).unwrap();
+
+        let res = service.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let session_cookie = res
+            .headers()
+            .get(SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let mut request = Request::get("/destroy").body(Body::empty()).unwrap();
+        request
+            .headers_mut()
+            .insert(COOKIE, session_cookie.parse().unwrap());
+        let res = service.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(
+            res.headers()
+                .get(SET_COOKIE)
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .len(),
+            121
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn too_short_secret() {
+        let store = MemoryStore::new();
+        SessionLayer::new(store, b"");
+    }
+
+    async fn echo(req: Request<Body>) -> Result<Response<Body>, BoxError> {
+        Ok(Response::new(req.into_body()))
+    }
+
+    async fn destroy(req: Request<Body>) -> Result<Response<Body>, BoxError> {
+        // Destroy the session if we received a session cookie.
+        if req.headers().get(COOKIE).is_some() {
+            let session_handle = req.extensions().get::<SessionHandle>().unwrap();
+            let mut session = session_handle.write().await;
+            session.destroy();
+        }
+
+        Ok(Response::new(req.into_body()))
+    }
+
+    async fn increment(mut req: Request<Body>) -> Result<Response<Body>, BoxError> {
+        let mut counter = 0;
+
+        {
+            let session_handle = req.extensions().get::<SessionHandle>().unwrap();
+            let mut session = session_handle.write().await;
+            counter = session
+                .get("counter")
+                .map(|count: i32| count + 1)
+                .unwrap_or(counter);
+            session.insert("counter", counter).unwrap();
+        }
+
+        let body = serde_json::to_string(&Counter { counter }).unwrap();
+        *req.body_mut() = Body::from(body);
+
+        Ok(Response::new(req.into_body()))
     }
 }
