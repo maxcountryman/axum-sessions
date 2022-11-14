@@ -33,7 +33,7 @@ To use the crate in your project, add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-axum-sessions = "0.3.1"
+axum-sessions = "0.3.2"
 ```
 
 ## 🤸 Usage

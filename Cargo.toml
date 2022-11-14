@@ -1,6 +1,6 @@
 [package]
 name = "axum-sessions"
-version = "0.3.1"
+version = "0.3.2"
 description = "🥠 Cookie-based sessions for Axum via async-session."
 edition = "2021"
 homepage = "https://github.com/maxcountryman/axum-sessions"
