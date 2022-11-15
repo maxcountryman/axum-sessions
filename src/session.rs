@@ -279,6 +279,7 @@ where
         // separated with semicolons (HTTP/1.1 behaviour) or into multiple separate
         // Cookie headers (HTTP/2 behaviour). Search for the session cookie from
         // all Cookie headers, assuming both forms are possible
+        let mut cookie_header_was_present = false;
         let cookie_value = request
             .headers()
             .get_all(COOKIE)
@@ -287,6 +288,7 @@ where
             .flat_map(|cookie_header| cookie_header.split(';'))
             .filter_map(|cookie_header| Cookie::parse_encoded(cookie_header.trim()).ok())
             .filter(|cookie| cookie.name() == session_layer.cookie_name)
+            .inspect(|_| cookie_header_was_present = true)
             .find_map(|cookie| self.layer.verify_signature(cookie.value()).ok());
 
         let inner = self.inner.clone();
@@ -330,7 +332,9 @@ where
             // changed, or the cookie value is missing (such as on
             // the first request) then we want to ensure we set
             // the cookie.
-            } else if session_layer.save_unchanged || session_data_changed || cookie_value.is_none()
+            } else if session_layer.save_unchanged
+                || session_data_changed
+                || cookie_header_was_present
             {
                 match session_layer.store.store_session(session).await {
                     Ok(Some(cookie_value)) => {
@@ -499,6 +503,21 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn no_cookie_stored_when_no_session_is_required() {
+        let secret = rand::thread_rng().gen::<[u8; 64]>();
+        let store = MemoryStore::new();
+        let session_layer = SessionLayer::new(store, &secret).with_save_unchanged(false);
+        let mut service = ServiceBuilder::new().layer(session_layer).service_fn(echo);
+
+        let request = Request::get("/").body(Body::empty()).unwrap();
+
+        let res = service.ready().await.unwrap().call(request).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        assert!(res.headers().get(SET_COOKIE).is_none());
+    }
+
+    #[tokio::test]
     async fn invalid_session_sets_cookie() {
         let secret = rand::thread_rng().gen::<[u8; 64]>();
         let store = MemoryStore::new();
@@ -510,14 +529,11 @@ mod tests {
         let res = service.ready().await.unwrap().call(request).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK);
 
-        res.headers()
-            .get(SET_COOKIE)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
+        assert!(res.headers().get(SET_COOKIE).is_none());
         let mut request = Request::get("/").body(Body::empty()).unwrap();
-        request.headers_mut().insert(COOKIE, "".parse().unwrap());
+        request
+            .headers_mut()
+            .insert(COOKIE, "axum.sid=aW52YWxpZC1zZXNzaW9uLWlk".parse().unwrap());
         let res = service.ready().await.unwrap().call(request).await.unwrap();
         assert!(res.headers().get(SET_COOKIE).is_some());
     }
