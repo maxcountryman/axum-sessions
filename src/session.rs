@@ -46,7 +46,8 @@ pub enum PersistencePolicy {
     /// Do not store empty "guest" sessions, only ping the storage layer if
     /// the session data changed.
     ChangedOnly,
-    /// Do not store empty "guest" sessions, always ping the storage layer for existing sessions.
+    /// Do not store empty "guest" sessions, always ping the storage layer for
+    /// existing sessions.
     ExistingOnly,
 }
 
@@ -71,7 +72,8 @@ impl<Store: SessionStore> SessionLayer<Store> {
     /// hydrated from this. Otherwise a new cookie is created and returned in
     /// the response.
     ///
-    /// The default behaviour is to enable "guest" sessions with [`SessionPolicy::Always`].
+    /// The default behaviour is to enable "guest" sessions with
+    /// [`PersistencePolicy::Always`].
     ///
     /// # Panics
     ///
@@ -350,8 +352,10 @@ where
 
             // Store if
             //  - We have guest sessions
-            //  - We received a valid cookie and we use the `ExistingOnly` policy.
-            //  - If we use the `ChangedOnly` policy, only `session.data_changed()` should trigger this branch.
+            //  - We received a valid cookie and we use the `ExistingOnly`
+            //    policy.
+            //  - If we use the `ChangedOnly` policy, only
+            //    `session.data_changed()` should trigger this branch.
             } else if session_layer.should_store(&cookie_value, session_data_changed) {
                 match session_layer.store.store_session(session).await {
                     Ok(Some(cookie_value)) => {
@@ -391,9 +395,8 @@ mod tests {
     use rand::Rng;
     use tower::{BoxError, Service, ServiceBuilder, ServiceExt};
 
-    use crate::{async_session::MemoryStore, SessionHandle, SessionLayer};
-
     use super::PersistencePolicy;
+    use crate::{async_session::MemoryStore, SessionHandle, SessionLayer};
 
     #[derive(Deserialize, Serialize, PartialEq, Debug)]
     struct Counter {
@@ -552,10 +555,9 @@ mod tests {
         let store = MemoryStore::new();
         let session_layer =
             SessionLayer::new(store, &secret).with_persistence_policy(persistence_policy);
-        let mut service =
-            ServiceBuilder::new()
-                .layer(&session_layer)
-                .service_fn(echo_read_session);
+        let mut service = ServiceBuilder::new()
+            .layer(&session_layer)
+            .service_fn(echo_read_session);
 
         let request = Request::get("/").body(Body::empty()).unwrap();
 

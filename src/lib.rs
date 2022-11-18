@@ -16,7 +16,9 @@
 //!
 //! ```rust,no_run
 //! use axum::{routing::get, Router};
-//! use axum_sessions::{async_session::MemoryStore, extractors::WritableSession, PersistencePolicy, SessionLayer};
+//! use axum_sessions::{
+//!     async_session::MemoryStore, extractors::WritableSession, PersistencePolicy, SessionLayer,
+//! };
 //!
 //! #[tokio::main]
 //! async fn main() {
