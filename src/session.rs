@@ -38,6 +38,18 @@ const BASE64_DIGEST_LEN: usize = 44;
 /// handle directly.
 pub type SessionHandle = Arc<RwLock<async_session::Session>>;
 
+/// Controls how the session data is persisted and created.
+#[derive(Clone)]
+pub enum PersistencePolicy {
+    /// Always ping the storage layer and store empty "guest" sessions.
+    Always,
+    /// Do not store empty "guest" sessions, only ping the storage layer if
+    /// the session data changed.
+    ChangedOnly,
+    /// Do not store empty "guest" sessions, always ping the storage layer for existing sessions.
+    ExistingOnly,
+}
+
 /// Layer that provides cookie-based sessions.
 #[derive(Clone)]
 pub struct SessionLayer<Store> {
@@ -45,8 +57,8 @@ pub struct SessionLayer<Store> {
     cookie_path: String,
     cookie_name: String,
     cookie_domain: Option<String>,
+    persistence_policy: PersistencePolicy,
     session_ttl: Option<Duration>,
-    save_unchanged: bool,
     same_site_policy: SameSite,
     secure: bool,
     key: Key,
@@ -59,6 +71,8 @@ impl<Store: SessionStore> SessionLayer<Store> {
     /// hydrated from this. Otherwise a new cookie is created and returned in
     /// the response.
     ///
+    /// The default behaviour is to enable "guest" sessions with [`SessionPolicy::Always`].
+    ///
     /// # Panics
     ///
     /// `SessionLayer::new` will panic if the secret is less than 64 bytes.
@@ -69,7 +83,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
     /// of your application:
     ///
     /// ```rust
-    /// # use axum_sessions::{SessionLayer, async_session::MemoryStore, SameSite};
+    /// # use axum_sessions::{PersistencePolicy, SessionLayer, async_session::MemoryStore, SameSite};
     /// # use std::time::Duration;
     /// SessionLayer::new(
     ///     MemoryStore::new(),
@@ -81,7 +95,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
     /// .with_cookie_domain("www.example.com")
     /// .with_same_site_policy(SameSite::Lax)
     /// .with_session_ttl(Some(Duration::from_secs(60 * 5)))
-    /// .with_save_unchanged(false)
+    /// .with_persistence_policy(PersistencePolicy::Always)
     /// .with_secure(true);
     /// ```
     pub fn new(store: Store, secret: &[u8]) -> Self {
@@ -91,7 +105,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
 
         Self {
             store,
-            save_unchanged: true,
+            persistence_policy: PersistencePolicy::Always,
             cookie_path: "/".into(),
             cookie_name: "axum.sid".into(),
             cookie_domain: None,
@@ -105,8 +119,8 @@ impl<Store: SessionStore> SessionLayer<Store> {
     /// When `true`, a session cookie will always be set. When `false` the
     /// session data must be modified in order for it to be set. Defaults to
     /// `true`.
-    pub fn with_save_unchanged(mut self, save_unchanged: bool) -> Self {
-        self.save_unchanged = save_unchanged;
+    pub fn with_persistence_policy(mut self, policy: PersistencePolicy) -> Self {
+        self.persistence_policy = policy;
         self
     }
 
@@ -126,6 +140,14 @@ impl<Store: SessionStore> SessionLayer<Store> {
     pub fn with_cookie_domain(mut self, cookie_domain: impl AsRef<str>) -> Self {
         self.cookie_domain = Some(cookie_domain.as_ref().to_owned());
         self
+    }
+
+    /// Decide if session is presented to the storage layer
+    fn should_store(&self, cookie_value: &Option<String>, session_data_changed: bool) -> bool {
+        session_data_changed
+            || matches!(self.persistence_policy, PersistencePolicy::Always)
+            || (matches!(self.persistence_policy, PersistencePolicy::ExistingOnly)
+                && cookie_value.is_some())
     }
 
     /// Sets a cookie same site policy for the session. Defaults to
@@ -279,7 +301,6 @@ where
         // separated with semicolons (HTTP/1.1 behaviour) or into multiple separate
         // Cookie headers (HTTP/2 behaviour). Search for the session cookie from
         // all Cookie headers, assuming both forms are possible
-        let mut cookie_header_was_present = false;
         let cookie_value = request
             .headers()
             .get_all(COOKIE)
@@ -288,7 +309,6 @@ where
             .flat_map(|cookie_header| cookie_header.split(';'))
             .filter_map(|cookie_header| Cookie::parse_encoded(cookie_header.trim()).ok())
             .filter(|cookie| cookie.name() == session_layer.cookie_name)
-            .inspect(|_| cookie_header_was_present = true)
             .find_map(|cookie| self.layer.verify_signature(cookie.value()).ok());
 
         let inner = self.inner.clone();
@@ -328,14 +348,11 @@ where
                     HeaderValue::from_str(&removal_cookie.to_string()).unwrap(),
                 );
 
-            // If we've asked to save on unchanged, the session data has
-            // changed, or the cookie value is missing (such as on
-            // the first request) then we want to ensure we set
-            // the cookie.
-            } else if session_layer.save_unchanged
-                || session_data_changed
-                || cookie_header_was_present
-            {
+            // Store if
+            //  - We have guest sessions
+            //  - We received a valid cookie and we use the `ExistingOnly` policy.
+            //  - If we use the `ChangedOnly` policy, only `session.data_changed()` should trigger this branch.
+            } else if session_layer.should_store(&cookie_value, session_data_changed) {
                 match session_layer.store.store_session(session).await {
                     Ok(Some(cookie_value)) => {
                         let cookie = session_layer.build_cookie(cookie_value);
@@ -376,9 +393,16 @@ mod tests {
 
     use crate::{async_session::MemoryStore, SessionHandle, SessionLayer};
 
+    use super::PersistencePolicy;
+
     #[derive(Deserialize, Serialize, PartialEq, Debug)]
     struct Counter {
         counter: i32,
+    }
+
+    enum ExpectedResult {
+        Some,
+        None,
     }
 
     #[tokio::test]
@@ -506,7 +530,8 @@ mod tests {
     async fn no_cookie_stored_when_no_session_is_required() {
         let secret = rand::thread_rng().gen::<[u8; 64]>();
         let store = MemoryStore::new();
-        let session_layer = SessionLayer::new(store, &secret).with_save_unchanged(false);
+        let session_layer = SessionLayer::new(store, &secret)
+            .with_persistence_policy(PersistencePolicy::ChangedOnly);
         let mut service = ServiceBuilder::new().layer(session_layer).service_fn(echo);
 
         let request = Request::get("/").body(Body::empty()).unwrap();
@@ -517,25 +542,102 @@ mod tests {
         assert!(res.headers().get(SET_COOKIE).is_none());
     }
 
-    #[tokio::test]
-    async fn invalid_session_sets_cookie() {
+    async fn invalid_session_check_cookie_result(
+        persistence_policy: PersistencePolicy,
+        change_data: bool,
+        expect_cookie_header: (ExpectedResult, ExpectedResult),
+    ) {
+        let (expect_cookie_header_first, expect_cookie_header_second) = expect_cookie_header;
         let secret = rand::thread_rng().gen::<[u8; 64]>();
         let store = MemoryStore::new();
-        let session_layer = SessionLayer::new(store, &secret).with_save_unchanged(false);
-        let mut service = ServiceBuilder::new().layer(session_layer).service_fn(echo);
+        let session_layer =
+            SessionLayer::new(store, &secret).with_persistence_policy(persistence_policy);
+        let mut service =
+            ServiceBuilder::new()
+                .layer(&session_layer)
+                .service_fn(echo_read_session);
 
         let request = Request::get("/").body(Body::empty()).unwrap();
 
         let res = service.ready().await.unwrap().call(request).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK);
 
-        assert!(res.headers().get(SET_COOKIE).is_none());
+        match expect_cookie_header_first {
+            ExpectedResult::Some => assert!(
+                res.headers().get(SET_COOKIE).is_some(),
+                "Set-Cookie must be present for first response"
+            ),
+            ExpectedResult::None => assert!(
+                res.headers().get(SET_COOKIE).is_none(),
+                "Set-Cookie must not be present for first response"
+            ),
+        }
+
+        let mut service =
+            ServiceBuilder::new()
+                .layer(session_layer)
+                .service_fn(move |req| async move {
+                    if change_data {
+                        echo_with_session_change(req).await
+                    } else {
+                        echo_read_session(req).await
+                    }
+                });
         let mut request = Request::get("/").body(Body::empty()).unwrap();
         request
             .headers_mut()
             .insert(COOKIE, "axum.sid=aW52YWxpZC1zZXNzaW9uLWlk".parse().unwrap());
         let res = service.ready().await.unwrap().call(request).await.unwrap();
-        assert!(res.headers().get(SET_COOKIE).is_some());
+        match expect_cookie_header_second {
+            ExpectedResult::Some => assert!(
+                res.headers().get(SET_COOKIE).is_some(),
+                "Set-Cookie must be present for second response"
+            ),
+            ExpectedResult::None => assert!(
+                res.headers().get(SET_COOKIE).is_none(),
+                "Set-Cookie must not be present for second response"
+            ),
+        }
+    }
+
+    #[tokio::test]
+    async fn invalid_session_always_sets_guest_cookie() {
+        invalid_session_check_cookie_result(
+            PersistencePolicy::Always,
+            false,
+            (ExpectedResult::Some, ExpectedResult::Some),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn invalid_session_sets_new_session_cookie_when_data_changes() {
+        invalid_session_check_cookie_result(
+            PersistencePolicy::ExistingOnly,
+            true,
+            (ExpectedResult::None, ExpectedResult::Some),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn invalid_session_sets_no_cookie_when_no_data_changes() {
+        invalid_session_check_cookie_result(
+            PersistencePolicy::ExistingOnly,
+            false,
+            (ExpectedResult::None, ExpectedResult::None),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn invalid_session_changedonly_sets_cookie_when_changed() {
+        invalid_session_check_cookie_result(
+            PersistencePolicy::ChangedOnly,
+            true,
+            (ExpectedResult::None, ExpectedResult::Some),
+        )
+        .await;
     }
 
     #[tokio::test]
@@ -583,6 +685,24 @@ mod tests {
     }
 
     async fn echo(req: Request<Body>) -> Result<Response<Body>, BoxError> {
+        Ok(Response::new(req.into_body()))
+    }
+
+    async fn echo_read_session(req: Request<Body>) -> Result<Response<Body>, BoxError> {
+        {
+            let session_handle = req.extensions().get::<SessionHandle>().unwrap();
+            let session = session_handle.write().await;
+            let _ = session.get::<String>("signed_in").unwrap_or_default();
+        }
+        Ok(Response::new(req.into_body()))
+    }
+
+    async fn echo_with_session_change(req: Request<Body>) -> Result<Response<Body>, BoxError> {
+        {
+            let session_handle = req.extensions().get::<SessionHandle>().unwrap();
+            let mut session = session_handle.write().await;
+            session.insert("signed_in", true).unwrap();
+        }
         Ok(Response::new(req.into_body()))
     }
 

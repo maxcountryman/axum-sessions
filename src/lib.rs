@@ -16,7 +16,7 @@
 //!
 //! ```rust,no_run
 //! use axum::{routing::get, Router};
-//! use axum_sessions::{async_session::MemoryStore, extractors::WritableSession, SessionLayer};
+//! use axum_sessions::{async_session::MemoryStore, extractors::WritableSession, PersistencePolicy, SessionLayer};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -98,4 +98,4 @@ mod session;
 pub use async_session;
 pub use axum_extra::extract::cookie::SameSite;
 
-pub use self::session::{Session, SessionHandle, SessionLayer};
+pub use self::session::{PersistencePolicy, Session, SessionHandle, SessionLayer};
