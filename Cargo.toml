@@ -8,6 +8,7 @@ license = "MIT"
 keywords = ["axum", "session", "sessions", "cookie", "async-session"]
 categories = ["asynchronous", "network-programming", "web-programming"]
 repository = "https://github.com/maxcountryman/axum-sessions"
+documentation = "https://docs.rs/axum-sessions"
 
 [dependencies]
 async-session = "3.0.0"
