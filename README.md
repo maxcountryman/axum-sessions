@@ -36,7 +36,7 @@ To use the crate in your project, add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-axum-sessions = "0.3.2"
+axum-sessions = "0.4.0"
 ```
 
 ## 🤸 Usage
@@ -46,7 +46,7 @@ axum-sessions = "0.3.2"
 ### `axum` Example
 
 ```rust
-use axum::{routing::get, Router};
+use axum::{response::IntoResponse, routing::get, Router};
 use axum_sessions::{
     async_session::MemoryStore,
     extractors::{ReadableSession, WritableSession},
@@ -58,33 +58,33 @@ use rand::Rng;
 async fn main() {
     let store = MemoryStore::new();
     let secret = rand::thread_rng().gen::<[u8; 128]>();
-    let session_layer = SessionLayer::new(store, &secret);
+    let session_layer = SessionLayer::new(store, &secret).with_secure(false);
 
-    async fn signin_handler(mut session: WritableSession) {
-        session
-            .insert("signed_in", true)
-            .expect("Could not sign in.");
+    async fn display_handler(session: ReadableSession) -> impl IntoResponse {
+        let mut count = 0;
+        count = session.get("count").unwrap_or(count);
+        format!(
+            "Count is: {}; visit /inc to increment and /reset to reset",
+            count
+        )
     }
 
-    async fn signout_handler(mut session: WritableSession) {
+    async fn increment_handler(mut session: WritableSession) -> impl IntoResponse {
+        let mut count = 1;
+        count = session.get("count").map(|n: i32| n + 1).unwrap_or(count);
+        session.insert("count", count).unwrap();
+        format!("Count is: {}", count)
+    }
+
+    async fn reset_handler(mut session: WritableSession) -> impl IntoResponse {
         session.destroy();
-    }
-
-    async fn protected_handler(session: ReadableSession) -> &'static str {
-        if session
-            .get::<bool>("signed_in")
-            .unwrap_or(false)
-        {
-            "Shh, it's secret!"
-        } else {
-            "Nothing to see here."
-        }
+        "Count reset"
     }
 
     let app = Router::new()
-        .route("/signin", get(signin_handler))
-        .route("/signout", get(signout_handler))
-        .route("/protected", get(protected_handler))
+        .route("/", get(display_handler))
+        .route("/inc", get(increment_handler))
+        .route("/reset", get(reset_handler))
         .layer(session_layer);
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -94,10 +94,14 @@ async fn main() {
 }
 ```
 
-You can find this [example][signin-example] as well as other example projects in the [example directory][examples].
+You can find this [example][counter-example] as well as other example projects in the [example directory][examples].
+
+## Session authentication via `axum-login`
+
+For user session management and authentication and authorization specifically please see [`axum-login`](https://github.com/maxcountryman/axum-login).
 
 See the [crate documentation][docs] for more usage information.
 
-[signin-example]: https://github.com/maxcountryman/axum-sessions/tree/main/examples/signin
+[counter-example]: https://github.com/maxcountryman/axum-sessions/tree/main/examples/counter
 [examples]: https://github.com/maxcountryman/axum-sessions/tree/main/examples
 [docs]: https://docs.rs/axum-sessions
