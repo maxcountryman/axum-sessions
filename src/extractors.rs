@@ -2,11 +2,7 @@
 
 use std::ops::{Deref, DerefMut};
 
-use axum::{
-    async_trait,
-    extract::{FromRequest, RequestParts},
-    Extension,
-};
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Extension};
 use tokio::sync::{OwnedRwLockReadGuard, OwnedRwLockWriteGuard};
 
 use crate::SessionHandle;
@@ -27,16 +23,17 @@ impl Deref for ReadableSession {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for ReadableSession
+impl<S> FromRequestParts<S> for ReadableSession
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = std::convert::Infallible;
 
-    async fn from_request(request: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(session_handle): Extension<SessionHandle> = Extension::from_request(request)
-            .await
-            .expect("Session extension missing. Is the session layer installed?");
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(session_handle): Extension<SessionHandle> =
+            Extension::from_request_parts(parts, state)
+                .await
+                .expect("Session extension missing. Is the session layer installed?");
         let session = session_handle.read_owned().await;
 
         Ok(Self { session })
@@ -65,16 +62,17 @@ impl DerefMut for WritableSession {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for WritableSession
+impl<S> FromRequestParts<S> for WritableSession
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = std::convert::Infallible;
 
-    async fn from_request(request: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(session_handle): Extension<SessionHandle> = Extension::from_request(request)
-            .await
-            .expect("Session extension missing. Is the session layer installed?");
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(session_handle): Extension<SessionHandle> =
+            Extension::from_request_parts(parts, state)
+                .await
+                .expect("Session extension missing. Is the session layer installed?");
         let session = session_handle.write_owned().await;
 
         Ok(Self { session })
