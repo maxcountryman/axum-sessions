@@ -1,3 +1,5 @@
+//! Extractors for sessions.
+
 use std::ops::{Deref, DerefMut};
 
 use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Extension};

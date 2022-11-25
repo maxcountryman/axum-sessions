@@ -3,7 +3,7 @@ axum-sessions
 </h1>
 
 <p align="center">
-🥠 Cookie-based sessions for axum via async_session.
+🥠 Cookie-based sessions for Axum via async-session.
 </p>
 
 <div align="center">
@@ -16,14 +16,17 @@ axum-sessions
 <a href="https://github.com/maxcountryman/axum-sessions/actions/workflows/rust.yml">
 <img src="https://github.com/maxcountryman/axum-sessions/actions/workflows/rust.yml/badge.svg" />
 </a>
+<a href='https://coveralls.io/github/maxcountryman/axum-sessions?branch=main'>
+<img src='https://coveralls.io/repos/github/maxcountryman/axum-sessions/badge.svg?branch=main' alt='Coverage Status' />
+</a>
 </div>
 
 ## 🎨 Overview
 
 `axum-sessions` is a middleware providing cookie-based sessions for `axum` applications.
 
-- Cryptographically-signed cookies, ensuring authenticity
-- Wraps `async_session`, enabling flexible cookie storage (e.g. `async-sqlx-session`)
+- Cryptographically-signed cookies, ensuring integrity and authenticity
+- Wraps `async-session`, enabling flexible cookie storage (e.g. `async-sqlx-session`)
 - Convenient extractor-based API (i.e. `ReadableSession` and `WritableSession`)
 - Can be used as a generic Tower middleware
 
@@ -33,7 +36,7 @@ To use the crate in your project, add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-axum-sessions = "0.3.1"
+axum-sessions = "0.3.2"
 ```
 
 ## 🤸 Usage

@@ -1,13 +1,14 @@
 [package]
 name = "axum-sessions"
-version = "0.3.1"
-description = "🥠 Cookie-based sessions for axum via async_session."
+version = "0.4.0"
+description = "🥠 Cookie-based sessions for Axum via async-session."
 edition = "2021"
 homepage = "https://github.com/maxcountryman/axum-sessions"
 license = "MIT"
-keywords = ["axum", "session", "sessions", "cookie", "async_session"]
+keywords = ["axum", "session", "sessions", "cookie", "async-session"]
 categories = ["asynchronous", "network-programming", "web-programming"]
 repository = "https://github.com/maxcountryman/axum-sessions"
+documentation = "https://docs.rs/axum-sessions"
 
 [dependencies]
 async-session = "3.0.0"
@@ -32,6 +33,7 @@ features = ["sync"]
 [dev-dependencies]
 http = "0.2.8"
 hyper = "0.14.19"
+serde = "1.0.147"
 
 [dev-dependencies.rand]
 version = "0.8.5"

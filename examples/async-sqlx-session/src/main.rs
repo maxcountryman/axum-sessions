@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cd examples && cargo run -p example-async-sqlx-session
+//! ```
+
 use async_sqlx_session::SqliteSessionStore;
 use axum::{routing::get, Router};
 use axum_sessions::{

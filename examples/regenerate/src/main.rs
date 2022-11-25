@@ -1,3 +1,9 @@
+//! Run with
+//!
+//! ```not_rust
+//! cd examples && cargo run -p example-regenerate
+//! ```
+
 use axum::{routing::get, Router};
 use axum_sessions::{
     async_session::MemoryStore,
