@@ -345,7 +345,7 @@ where
 
                 let removal_cookie = session_layer.build_removal_cookie();
 
-                response.headers_mut().insert(
+                response.headers_mut().append(
                     SET_COOKIE,
                     HeaderValue::from_str(&removal_cookie.to_string()).unwrap(),
                 );
@@ -360,7 +360,7 @@ where
                 match session_layer.store.store_session(session).await {
                     Ok(Some(cookie_value)) => {
                         let cookie = session_layer.build_cookie(cookie_value);
-                        response.headers_mut().insert(
+                        response.headers_mut().append(
                             SET_COOKIE,
                             HeaderValue::from_str(&cookie.to_string()).unwrap(),
                         );
