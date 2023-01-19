@@ -160,7 +160,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
     }
 
     /// Sets a cookie time-to-live (ttl) for the session. Defaults to
-    /// `Duration::from_secs(60 * 60 24)`; one day.
+    /// `Duration::from_secs(60 * 60 * 24)`; one day.
     pub fn with_session_ttl(mut self, session_ttl: Option<Duration>) -> Self {
         self.session_ttl = session_ttl;
         self
