@@ -61,6 +61,7 @@ pub struct SessionLayer<Store> {
     persistence_policy: PersistencePolicy,
     session_ttl: Option<Duration>,
     same_site_policy: SameSite,
+    http_only: bool,
     secure: bool,
     key: Key,
 }
@@ -98,6 +99,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
     /// .with_same_site_policy(SameSite::Lax)
     /// .with_session_ttl(Some(Duration::from_secs(60 * 5)))
     /// .with_persistence_policy(PersistencePolicy::Always)
+    /// .with_http_only(true)
     /// .with_secure(true);
     /// ```
     pub fn new(store: Store, secret: &[u8]) -> Self {
@@ -113,6 +115,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
             cookie_domain: None,
             same_site_policy: SameSite::Strict,
             session_ttl: Some(Duration::from_secs(24 * 60 * 60)),
+            http_only: true,
             secure: true,
             key: Key::from(secret),
         }
@@ -166,6 +169,12 @@ impl<Store: SessionStore> SessionLayer<Store> {
         self
     }
 
+    /// Sets a cookie `HttpOnly` attribute for the session. Defaults to `true`.
+    pub fn with_http_only(mut self, http_only: bool) -> Self {
+        self.http_only = http_only;
+        self
+    }
+
     /// Sets a cookie secure attribute for the session. Defaults to `true`.
     pub fn with_secure(mut self, secure: bool) -> Self {
         self.secure = secure;
@@ -187,7 +196,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
 
     fn build_cookie(&self, cookie_value: String) -> Cookie<'static> {
         let mut cookie = Cookie::build(self.cookie_name.clone(), cookie_value)
-            .http_only(true)
+            .http_only(self.http_only)
             .same_site(self.same_site_policy)
             .secure(self.secure)
             .path(self.cookie_path.clone())
