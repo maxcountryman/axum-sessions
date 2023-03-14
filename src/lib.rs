@@ -85,7 +85,7 @@
 //!         .unwrap()
 //!         .split("=")
 //!         .collect::<Vec<_>>()[0],
-//!     "axum.sid"
+//!     "sid"
 //! );
 //!
 //! # Ok(())

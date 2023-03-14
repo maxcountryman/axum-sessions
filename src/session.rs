@@ -111,7 +111,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
             store,
             persistence_policy: PersistencePolicy::Always,
             cookie_path: "/".into(),
-            cookie_name: "axum.sid".into(),
+            cookie_name: "sid".into(),
             cookie_domain: None,
             same_site_policy: SameSite::Strict,
             session_ttl: Some(Duration::from_secs(24 * 60 * 60)),
@@ -135,7 +135,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
         self
     }
 
-    /// Sets a cookie name for the session. Defaults to `"axum.sid"`.
+    /// Sets a cookie name for the session. Defaults to `"sid"`.
     pub fn with_cookie_name(mut self, cookie_name: impl AsRef<str>) -> Self {
         self.cookie_name = cookie_name.as_ref().to_owned();
         self
@@ -435,7 +435,7 @@ mod tests {
             .unwrap()
             .to_str()
             .unwrap()
-            .starts_with("axum.sid="))
+            .starts_with("sid="))
     }
 
     #[tokio::test]
@@ -597,7 +597,7 @@ mod tests {
         let mut request = Request::get("/").body(Body::empty()).unwrap();
         request
             .headers_mut()
-            .insert(COOKIE, "axum.sid=aW52YWxpZC1zZXNzaW9uLWlk".parse().unwrap());
+            .insert(COOKIE, "sid=aW52YWxpZC1zZXNzaW9uLWlk".parse().unwrap());
         let res = service.ready().await.unwrap().call(request).await.unwrap();
         match expect_cookie_header_second {
             ExpectedResult::Some => assert!(
@@ -684,7 +684,7 @@ mod tests {
                 .to_str()
                 .unwrap()
                 .len(),
-            121
+            116
         );
     }
 
