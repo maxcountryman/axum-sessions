@@ -1,7 +1,12 @@
-# 0.4.2
+# 0.5.0
+
+**BREAKING CHANGES**:
+
+- Resist session name fingerprinting [PR #36](https://github.com/maxcountryman/axum-sessions/pull/36)
+
+**OTHER CHANGES**:
 
 - Allow setting HttpOnly of cookie [PR #30](https://github.com/maxcountryman/axum-sessions/pull/30)
-- Resist session name fingerprinting [PR #36](https://github.com/maxcountryman/axum-sessions/pull/36)
 
 # 0.4.1
 
