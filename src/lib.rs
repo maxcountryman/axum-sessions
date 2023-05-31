@@ -22,7 +22,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let store = async_session::MemoryStore::new();
+//!     let store = MemoryStore::new();
 //!     let secret = b"..."; // MUST be at least 64 bytes!
 //!     let session_layer = SessionLayer::new(store, secret);
 //!
@@ -48,7 +48,7 @@
 //! use std::convert::Infallible;
 //!
 //! use axum::http::header::SET_COOKIE;
-//! use axum_sessions::{SessionHandle, SessionLayer};
+//! use axum_sessions::{async_session::MemoryStore, SessionHandle, SessionLayer};
 //! use http::{Request, Response};
 //! use hyper::Body;
 //! use rand::Rng;
@@ -64,7 +64,7 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let store = async_session::MemoryStore::new();
+//! let store = MemoryStore::new();
 //! let secret = rand::thread_rng().gen::<[u8; 128]>();
 //! let session_layer = SessionLayer::new(store, &secret);
 //!
