@@ -11,9 +11,12 @@ repository = "https://github.com/maxcountryman/axum-sessions"
 documentation = "https://docs.rs/axum-sessions"
 
 [dependencies]
-async-session = "3.0.0"
+async-session = { git = "https://github.com/http-rs/async-session", rev = "35cb0998f91b81b133c3314414adae4019a62741", default-features = false }
+base64 = "0.21.0"
 futures = "0.3.21"
+hmac = { version = "0.12.1", features = ["std"] }
 http-body = "0.4.5"
+sha2 = "0.10.6"
 tower = "0.4.12"
 tracing = "0.1"
 
@@ -34,6 +37,7 @@ features = ["sync"]
 http = "0.2.8"
 hyper = "0.14.19"
 serde = "1.0.147"
+serde_json = "1.0.93"
 
 [dev-dependencies.rand]
 version = "0.8.5"
@@ -43,3 +47,7 @@ features = ["min_const_gen"]
 version = "1.20.1"
 default-features = false
 features = ["macros", "rt-multi-thread"]
+
+[dev-dependencies.async-session-memory-store]
+git = "https://github.com/http-rs/async-session"
+rev = "35cb0998f91b81b133c3314414adae4019a62741"

@@ -17,8 +17,9 @@
 //! ```rust,no_run
 //! use axum::{routing::get, Router};
 //! use axum_sessions::{
-//!     async_session::MemoryStore, extractors::WritableSession, PersistencePolicy, SessionLayer,
+//!     extractors::WritableSession, PersistencePolicy, SessionLayer,
 //! };
+//! use async_session_memory_store::MemoryStore;
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -48,7 +49,8 @@
 //! use std::convert::Infallible;
 //!
 //! use axum::http::header::SET_COOKIE;
-//! use axum_sessions::{async_session::MemoryStore, SessionHandle, SessionLayer};
+//! use axum_sessions::{SessionHandle, SessionLayer};
+//! use async_session_memory_store::MemoryStore;
 //! use http::{Request, Response};
 //! use hyper::Body;
 //! use rand::Rng;
