@@ -15,11 +15,9 @@
 //! Using the middleware with axum is straightforward:
 //!
 //! ```rust,no_run
-//! use axum::{routing::get, Router};
-//! use axum_sessions::{
-//!     extractors::WritableSession, PersistencePolicy, SessionLayer,
-//! };
 //! use async_session_memory_store::MemoryStore;
+//! use axum::{routing::get, Router};
+//! use axum_sessions::{extractors::WritableSession, PersistencePolicy, SessionLayer};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -48,9 +46,9 @@
 //! ```rust
 //! use std::convert::Infallible;
 //!
+//! use async_session_memory_store::MemoryStore;
 //! use axum::http::header::SET_COOKIE;
 //! use axum_sessions::{SessionHandle, SessionLayer};
-//! use async_session_memory_store::MemoryStore;
 //! use http::{Request, Response};
 //! use hyper::Body;
 //! use rand::Rng;
