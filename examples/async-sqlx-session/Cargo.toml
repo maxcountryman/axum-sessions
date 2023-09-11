@@ -9,7 +9,9 @@ axum = "0.6.0"
 axum-sessions = { path = "../../" }
 
 [dependencies.async-sqlx-session]
-version = "0.4.0"
+# version = "0.4.0"
+git = "https://github.com/sbihel/async-sqlx-session"
+rev = "9ed73b641cb5e5c0c08b9d29dd723b3c8e57993d"
 default-features = false
 features = ["sqlite"]
 
@@ -18,8 +20,7 @@ version = "0.8.5"
 features = ["min_const_gen"]
 
 [dependencies.sqlx]
-version = "0.5.13"
-default-features = false
+version = "0.7.1"
 features = ["runtime-tokio-rustls", "sqlite"]
 
 [dependencies.tokio]

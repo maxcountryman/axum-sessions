@@ -37,7 +37,7 @@ features = ["sync"]
 http = "0.2.8"
 hyper = "0.14.19"
 serde = "1.0.147"
-serde_json = "1.0.93"
+serde_json = "1.0.106"
 
 [dev-dependencies.rand]
 version = "0.8.5"

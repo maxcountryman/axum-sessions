@@ -2,3 +2,7 @@
 members = ["*"]
 exclude = ["target"]
 resolver = "2"
+
+[workspace.dependencies.async-session-memory-store]
+git = "https://github.com/http-rs/async-session"
+rev = "35cb0998f91b81b133c3314414adae4019a62741"

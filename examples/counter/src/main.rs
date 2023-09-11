@@ -4,12 +4,9 @@
 //! cd examples && cargo run -p example-counter
 //! ```
 
+use async_session_memory_store::MemoryStore;
 use axum::{response::IntoResponse, routing::get, Router};
-use axum_sessions::{
-    async_session::MemoryStore,
-    extractors::{ReadableSession, WritableSession},
-    SessionLayer,
-};
+use axum_sessions::{extractors::Session, SessionLayer};
 use rand::Rng;
 
 #[tokio::main]
@@ -18,7 +15,7 @@ async fn main() {
     let secret = rand::thread_rng().gen::<[u8; 128]>();
     let session_layer = SessionLayer::new(store, &secret).with_secure(false);
 
-    async fn display_handler(session: ReadableSession) -> impl IntoResponse {
+    async fn display_handler(session: Session) -> impl IntoResponse {
         let mut count = 0;
         count = session.get("count").unwrap_or(count);
         format!(
@@ -27,14 +24,14 @@ async fn main() {
         )
     }
 
-    async fn increment_handler(mut session: WritableSession) -> impl IntoResponse {
+    async fn increment_handler(mut session: Session) -> impl IntoResponse {
         let mut count = 1;
         count = session.get("count").map(|n: i32| n + 1).unwrap_or(count);
         session.insert("count", count).unwrap();
         format!("Count is: {}", count)
     }
 
-    async fn reset_handler(mut session: WritableSession) -> impl IntoResponse {
+    async fn reset_handler(mut session: Session) -> impl IntoResponse {
         session.destroy();
         "Count reset"
     }
