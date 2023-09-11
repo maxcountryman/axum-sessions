@@ -28,12 +28,10 @@ const BASE64_DIGEST_LEN: usize = 44;
 /// A type alias which provides a handle to the underlying session.
 ///
 /// This is provided via [`http::Extensions`](axum::http::Extensions). Most
-/// applications will use the
-/// [`ReadableSession`](crate::extractors::ReadableSession) and
-/// [`WritableSession`](crate::extractors::WritableSession) extractors rather
-/// than using the handle directly. A notable exception is when using this
-/// library as a generic Tower middleware: such use cases will consume the
-/// handle directly.
+/// applications will use the [`Session`](crate::extractors::Session)
+/// extractor rather than using the handle directly. A notable exception is
+/// when using this library as a generic Tower middleware: such use cases will
+/// consume the handle directly.
 pub type SessionHandle = Arc<Mutex<async_session::Session>>;
 
 /// Controls how the session data is persisted and created.
