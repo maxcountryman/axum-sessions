@@ -6,9 +6,8 @@
 //! when they're not found or are otherwise invalid. When a valid, known cookie
 //! is received in a request, the session is hydrated from this cookie. The
 //! middleware provides sessions via [`SessionHandle`]. Handlers use the
-//! [`ReadableSession`](crate::extractors::ReadableSession) and
-//! [`WritableSession`](crate::extractors::WritableSession) extractors to read
-//! from and write to sessions respectively.
+//! [`Session`](crate::extractors::Session) extractor to read from and write to
+//! sessions respectively.
 //!
 //! # Example
 //!
