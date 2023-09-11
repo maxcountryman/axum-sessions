@@ -17,7 +17,7 @@
 //! ```rust,no_run
 //! use async_session_memory_store::MemoryStore;
 //! use axum::{routing::get, Router};
-//! use axum_sessions::{extractors::WritableSession, PersistencePolicy, SessionLayer};
+//! use axum_sessions::{extractors::Session, PersistencePolicy, SessionLayer};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -25,7 +25,7 @@
 //!     let secret = b"..."; // MUST be at least 64 bytes!
 //!     let session_layer = SessionLayer::new(store, secret);
 //!
-//!     async fn handler(mut session: WritableSession) {
+//!     async fn handler(mut session: Session) {
 //!         session
 //!             .insert("foo", 42)
 //!             .expect("Could not store the answer.");
@@ -56,7 +56,7 @@
 //!
 //! async fn handle(request: Request<Body>) -> Result<Response<Body>, Infallible> {
 //!     let session_handle = request.extensions().get::<SessionHandle>().unwrap();
-//!     let session = session_handle.read().await;
+//!     let session = session_handle.lock().await;
 //!     // Use the session as you'd like.
 //!
 //!     Ok(Response::new(Body::empty()))

@@ -20,7 +20,7 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use futures::future::BoxFuture;
 use hmac::{Hmac, Mac};
 use sha2::{digest::generic_array::GenericArray, Sha256};
-use tokio::sync::RwLock;
+use tokio::sync::Mutex;
 use tower::{Layer, Service};
 
 const BASE64_DIGEST_LEN: usize = 44;
@@ -34,7 +34,7 @@ const BASE64_DIGEST_LEN: usize = 44;
 /// than using the handle directly. A notable exception is when using this
 /// library as a generic Tower middleware: such use cases will consume the
 /// handle directly.
-pub type SessionHandle = Arc<RwLock<async_session::Session>>;
+pub type SessionHandle = Arc<Mutex<async_session::Session>>;
 
 /// Controls how the session data is persisted and created.
 #[derive(Clone)]
@@ -189,7 +189,7 @@ where
             None => None,
         };
 
-        Arc::new(RwLock::new(
+        Arc::new(Mutex::new(
             session
                 .and_then(async_session::Session::validate)
                 .unwrap_or_default(),
@@ -331,22 +331,21 @@ where
         let mut inner = std::mem::replace(&mut self.inner, inner);
         Box::pin(async move {
             let session_handle = session_layer.load_or_create(cookie_value.clone()).await;
+            let mut session = session_handle.lock().await;
 
-            let mut session = session_handle.write().await;
             if let Some(ttl) = session_layer.session_ttl {
                 (*session).expire_in(ttl);
             }
             drop(session);
 
             request.extensions_mut().insert(session_handle.clone());
+
             let mut response = inner.call(request).await?;
 
-            let session = session_handle.read().await;
+            let mut session = session_handle.lock().await;
             let (session_is_destroyed, session_data_changed) =
                 (session.is_destroyed(), session.data_changed());
-            drop(session);
 
-            let mut session = session_handle.write().await;
             if session_is_destroyed {
                 if let Err(e) = session_layer.store.destroy_session(&mut session).await {
                     tracing::error!("Failed to destroy session: {:?}", e);
@@ -701,7 +700,7 @@ mod tests {
     async fn echo_read_session(req: Request<Body>) -> Result<Response<Body>, BoxError> {
         {
             let session_handle = req.extensions().get::<SessionHandle>().unwrap();
-            let session = session_handle.write().await;
+            let session = session_handle.lock().await;
             let _ = session.get::<String>("signed_in").unwrap_or_default();
         }
         Ok(Response::new(req.into_body()))
@@ -710,7 +709,7 @@ mod tests {
     async fn echo_with_session_change(req: Request<Body>) -> Result<Response<Body>, BoxError> {
         {
             let session_handle = req.extensions().get::<SessionHandle>().unwrap();
-            let mut session = session_handle.write().await;
+            let mut session = session_handle.lock().await;
             session.insert("signed_in", true).unwrap();
         }
         Ok(Response::new(req.into_body()))
@@ -720,7 +719,7 @@ mod tests {
         // Destroy the session if we received a session cookie.
         if req.headers().get(COOKIE).is_some() {
             let session_handle = req.extensions().get::<SessionHandle>().unwrap();
-            let mut session = session_handle.write().await;
+            let mut session = session_handle.lock().await;
             session.destroy();
         }
 
@@ -732,7 +731,7 @@ mod tests {
 
         {
             let session_handle = req.extensions().get::<SessionHandle>().unwrap();
-            let mut session = session_handle.write().await;
+            let mut session = session_handle.lock().await;
             counter = session
                 .get("counter")
                 .map(|count: i32| count + 1)
