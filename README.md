@@ -1,5 +1,9 @@
 > [!IMPORTANT]
-> **Migrating to [`tower-sessions`](https://github.com/maxcountryman/tower-sessions)**: We have moved development of this crate to `tower-sessions`. Please **consider migrating** to `tower-sessions` if you use this crate.
+> **Migrating to [`tower-sessions`](https://github.com/maxcountryman/tower-sessions)**
+>
+> We have moved development of this crate to `tower-sessions`.
+>
+> Please **consider migrating** to `tower-sessions` if you use this crate.
 
 <h1 align="center">
 axum-sessions
