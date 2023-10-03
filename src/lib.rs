@@ -6,19 +6,17 @@
 //! when they're not found or are otherwise invalid. When a valid, known cookie
 //! is received in a request, the session is hydrated from this cookie. The
 //! middleware provides sessions via [`SessionHandle`]. Handlers use the
-//! [`ReadableSession`](crate::extractors::ReadableSession) and
-//! [`WritableSession`](crate::extractors::WritableSession) extractors to read
-//! from and write to sessions respectively.
+//! [`Session`](crate::extractors::Session) extractor to read from and write to
+//! sessions respectively.
 //!
 //! # Example
 //!
 //! Using the middleware with axum is straightforward:
 //!
 //! ```rust,no_run
+//! use async_session_memory_store::MemoryStore;
 //! use axum::{routing::get, Router};
-//! use axum_sessions::{
-//!     async_session::MemoryStore, extractors::WritableSession, PersistencePolicy, SessionLayer,
-//! };
+//! use axum_sessions::{extractors::Session, PersistencePolicy, SessionLayer};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -26,7 +24,7 @@
 //!     let secret = b"..."; // MUST be at least 64 bytes!
 //!     let session_layer = SessionLayer::new(store, secret);
 //!
-//!     async fn handler(mut session: WritableSession) {
+//!     async fn handler(mut session: Session) {
 //!         session
 //!             .insert("foo", 42)
 //!             .expect("Could not store the answer.");
@@ -47,8 +45,9 @@
 //! ```rust
 //! use std::convert::Infallible;
 //!
+//! use async_session_memory_store::MemoryStore;
 //! use axum::http::header::SET_COOKIE;
-//! use axum_sessions::{async_session::MemoryStore, SessionHandle, SessionLayer};
+//! use axum_sessions::{SessionHandle, SessionLayer};
 //! use http::{Request, Response};
 //! use hyper::Body;
 //! use rand::Rng;
@@ -56,7 +55,7 @@
 //!
 //! async fn handle(request: Request<Body>) -> Result<Response<Body>, Infallible> {
 //!     let session_handle = request.extensions().get::<SessionHandle>().unwrap();
-//!     let session = session_handle.read().await;
+//!     let session = session_handle.lock().await;
 //!     // Use the session as you'd like.
 //!
 //!     Ok(Response::new(Body::empty()))

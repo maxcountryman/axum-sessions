@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 axum = "0.6.0"
 axum-sessions = { path = "../../" }
+async-session-memory-store = { workspace = true }
 
 [dependencies.rand]
 version = "0.8.5"

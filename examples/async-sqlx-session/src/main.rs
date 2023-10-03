@@ -6,10 +6,7 @@
 
 use async_sqlx_session::SqliteSessionStore;
 use axum::{routing::get, Router};
-use axum_sessions::{
-    extractors::{ReadableSession, WritableSession},
-    SessionLayer,
-};
+use axum_sessions::{extractors::Session, SessionLayer};
 use rand::Rng;
 
 #[tokio::main]
@@ -24,14 +21,14 @@ async fn main() {
     let secret = rand::thread_rng().gen::<[u8; 128]>();
     let session_layer = SessionLayer::new(store, &secret);
 
-    async fn increment_count_handler(mut session: WritableSession) {
+    async fn increment_count_handler(mut session: Session) {
         let previous: usize = session.get("counter").unwrap_or_default();
         session
             .insert("counter", previous + 1)
             .expect("Could not store counter.");
     }
 
-    async fn handler(session: ReadableSession) -> String {
+    async fn handler(session: Session) -> String {
         format!(
             "Counter: {}",
             session.get::<usize>("counter").unwrap_or_default()

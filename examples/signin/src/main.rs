@@ -4,12 +4,9 @@
 //! cd examples && cargo run -p example-signin
 //! ```
 
+use async_session_memory_store::MemoryStore;
 use axum::{routing::get, Router};
-use axum_sessions::{
-    async_session::MemoryStore,
-    extractors::{ReadableSession, WritableSession},
-    SessionLayer,
-};
+use axum_sessions::{extractors::Session, SessionLayer};
 use rand::Rng;
 
 #[tokio::main]
@@ -18,17 +15,17 @@ async fn main() {
     let secret = rand::thread_rng().gen::<[u8; 128]>();
     let session_layer = SessionLayer::new(store, &secret);
 
-    async fn signin_handler(mut session: WritableSession) {
+    async fn signin_handler(mut session: Session) {
         session
             .insert("signed_in", true)
             .expect("Could not sign in.");
     }
 
-    async fn signout_handler(mut session: WritableSession) {
+    async fn signout_handler(mut session: Session) {
         session.destroy();
     }
 
-    async fn protected_handler(session: ReadableSession) -> &'static str {
+    async fn protected_handler(session: Session) -> &'static str {
         if session.get::<bool>("signed_in").unwrap_or(false) {
             "Shh, it's secret!"
         } else {
