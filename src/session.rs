@@ -102,6 +102,11 @@ impl<Store: SessionStore> SessionLayer<Store> {
     /// .with_http_only(true)
     /// .with_secure(true);
     /// ```
+    #[deprecated(
+        since = "0.6.0",
+        note = "Development of axum-sessions has moved to the tower-sessions crate. Please \
+                consider migrating."
+    )]
     pub fn new(store: Store, secret: &[u8]) -> Self {
         if secret.len() < 64 {
             panic!("`secret` must be at least 64 bytes.")
