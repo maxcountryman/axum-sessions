@@ -1,5 +1,6 @@
 > [!IMPORTANT]
-> **Migration to `tower-sessions`**
+>
+> # **Migration to `tower-sessions`**
 >
 > **Development of this crate has moved to [`tower-sessions`](https://github.com/maxcountryman/tower-sessions).** Please consider migrating.
 >
