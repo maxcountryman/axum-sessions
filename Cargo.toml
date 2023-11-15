@@ -31,7 +31,7 @@ default-features = false
 features = ["sync"]
 
 [dev-dependencies]
-http = "0.2.8"
+http = "1.0.0"
 hyper = "0.14.19"
 serde = "1.0.147"
 
