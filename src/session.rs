@@ -7,12 +7,7 @@ use std::{
     time::Duration,
 };
 
-use async_session::{
-    base64,
-    hmac::{Hmac, Mac, NewMac},
-    sha2::Sha256,
-    SessionStore,
-};
+use async_session::SessionStore;
 use axum::{
     http::{
         header::{HeaderValue, COOKIE, SET_COOKIE},
@@ -21,7 +16,10 @@ use axum::{
     response::Response,
 };
 use axum_extra::extract::cookie::{Cookie, Key, SameSite};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use futures::future::BoxFuture;
+use hmac::{Hmac, Mac};
+use sha2::{digest::generic_array::GenericArray, Sha256};
 use tokio::sync::RwLock;
 use tower::{Layer, Service};
 
@@ -66,7 +64,10 @@ pub struct SessionLayer<Store> {
     key: Key,
 }
 
-impl<Store: SessionStore> SessionLayer<Store> {
+impl<Store> SessionLayer<Store>
+where
+    Store: SessionStore + Clone + Send + Sync + 'static,
+{
     /// Creates a layer which will attach a [`SessionHandle`] to requests via an
     /// extension. This session is derived from a cryptographically signed
     /// cookie. When the client sends a valid, known cookie then the session is
@@ -248,7 +249,7 @@ impl<Store: SessionStore> SessionLayer<Store> {
         mac.update(cookie.value().as_bytes());
 
         // Cookie's new value is [MAC | original-value].
-        let mut new_value = base64::encode(mac.finalize().into_bytes());
+        let mut new_value = BASE64.encode(mac.finalize().into_bytes());
         new_value.push_str(cookie.value());
         cookie.set_value(new_value);
     }
@@ -265,18 +266,21 @@ impl<Store: SessionStore> SessionLayer<Store> {
 
         // Split [MAC | original-value] into its two parts.
         let (digest_str, value) = cookie_value.split_at(BASE64_DIGEST_LEN);
-        let digest = base64::decode(digest_str).map_err(|_| "bad base64 digest")?;
+        let digest = BASE64.decode(digest_str).map_err(|_| "bad base64 digest")?;
 
         // Perform the verification.
         let mut mac = Hmac::<Sha256>::new_from_slice(self.key.signing()).expect("good key");
         mac.update(value.as_bytes());
-        mac.verify(&digest)
+        mac.verify(GenericArray::from_slice(&digest))
             .map(|_| value.to_string())
             .map_err(|_| "value did not verify")
     }
 }
 
-impl<Inner, Store: SessionStore> Layer<Inner> for SessionLayer<Store> {
+impl<Inner, Store> Layer<Inner> for SessionLayer<Store>
+where
+    Store: SessionStore + Clone + Send + Sync + 'static,
+{
     type Service = Session<Inner, Store>;
 
     fn layer(&self, inner: Inner) -> Self::Service {
@@ -294,13 +298,13 @@ pub struct Session<Inner, Store: SessionStore> {
     layer: SessionLayer<Store>,
 }
 
-impl<Inner, ReqBody, ResBody, Store: SessionStore> Service<Request<ReqBody>>
-    for Session<Inner, Store>
+impl<Inner, ReqBody, ResBody, Store> Service<Request<ReqBody>> for Session<Inner, Store>
 where
     Inner: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     ResBody: Send + 'static,
     ReqBody: Send + 'static,
     Inner::Future: Send + 'static,
+    Store: SessionStore + Clone + Send + Sync + 'static,
 {
     type Response = Inner::Response;
     type Error = Inner::Error;
@@ -396,10 +400,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use async_session::{
-        serde::{Deserialize, Serialize},
-        serde_json,
-    };
     use axum::http::{Request, Response};
     use http::{
         header::{COOKIE, SET_COOKIE},
@@ -407,6 +407,7 @@ mod tests {
     };
     use hyper::Body;
     use rand::Rng;
+    use serde::{Deserialize, Serialize};
     use tower::{BoxError, Service, ServiceBuilder, ServiceExt};
 
     use super::PersistencePolicy;
